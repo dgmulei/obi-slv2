@@ -45,6 +45,7 @@ class EnhancedConversationManager:
         self.style_calibrator = StyleCalibrator(differentiation_level)
         self.user_profile = None
         self.current_project_folder = None
+        self.latest_calibration_message = None  # Store latest calibration message
         
         # Initialize project folder memory
         self.project_folder = ConversationBufferMemory(
@@ -86,15 +87,17 @@ class EnhancedConversationManager:
                 # Update system prompt with new calibrated values
                 self._update_system_prompt()
                 
-                # Store updated project folder in memory
-                self.project_folder.save_context(
-                    {"input": "differentiation_update"},
-                    {
-                        "output": f"Updated calibration values: interaction_style={calibrated_controls['interaction_style']}, "
-                                 f"detail_level={calibrated_controls['detail_level']}, "
-                                 f"rapport_level={calibrated_controls['rapport_level']}"
-                    }
-                )
+                # Create and store latest calibration message
+                self.latest_calibration_message = {
+                    "role": "assistant",
+                    "content": (
+                        "[COMMUNICATION UPDATE] Please adjust your communication style according to these new preferences:\n"
+                        f"- Interaction Style: {calibrated_controls['interaction_style']}\n"
+                        f"- Detail Level: {calibrated_controls['detail_level']}\n"
+                        f"- Rapport Level: {calibrated_controls['rapport_level']}\n\n"
+                        "Apply these preferences to all subsequent responses."
+                    )
+                }
                 
                 logger.info("Successfully updated differentiation level and recalibrated values")
                 
@@ -121,6 +124,7 @@ class EnhancedConversationManager:
 - Only link to official RMV pages
 - Step-by-step guidance if user shows confusion
 - Protect sensitive information
+- When you see a [COMMUNICATION UPDATE] message, immediately adjust your communication style
 
 USER CONTEXT:
 Name: {name}
@@ -153,12 +157,6 @@ STRUCTURED COMMUNICATION REQUIREMENTS:
                 rapport_level=calibrated_controls['rapport_level'],
                 bagman_description=self.user_profile.get('metadata', {}).get('bagman_description', ''),
                 structured_instructions=self._format_structured_instructions(calibrated_controls)
-            )
-            
-            # Store updated system prompt in project folder memory
-            self.project_folder.save_context(
-                {"input": "system_prompt_update"},
-                {"output": self.system_prompt}
             )
             
             logger.info("System prompt updated with new calibrated values")
@@ -197,11 +195,17 @@ STRUCTURED COMMUNICATION REQUIREMENTS:
             # Update project folder with system prompt
             self.current_project_folder.system_prompt = self.system_prompt
             
-            # Store in project folder memory
-            self.project_folder.save_context(
-                {"input": "session_start"},
-                {"output": self.system_prompt}
-            )
+            # Create initial calibration message
+            self.latest_calibration_message = {
+                "role": "assistant",
+                "content": (
+                    "[COMMUNICATION UPDATE] Initial communication preferences:\n"
+                    f"- Interaction Style: {calibrated_controls['interaction_style']}\n"
+                    f"- Detail Level: {calibrated_controls['detail_level']}\n"
+                    f"- Rapport Level: {calibrated_controls['rapport_level']}\n\n"
+                    "Please adjust your communication style accordingly."
+                )
+            }
             
             self.session_initialized = True
             logger.info(f"Session initialized for user: {user_profile['personal']['full_name']}")
@@ -230,13 +234,14 @@ STRUCTURED COMMUNICATION REQUIREMENTS:
         try:
             logger.info("Preparing request to Anthropic")
             
-            # Create messages for Anthropic API
-            messages = [
-                {
-                    "role": "user",
-                    "content": message
-                }
-            ]
+            # Create messages array with latest calibration if available
+            messages = []
+            if self.latest_calibration_message:
+                messages.append(self.latest_calibration_message)
+            messages.append({
+                "role": "user",
+                "content": message
+            })
             
             logger.info("Sending request to Anthropic")
             
