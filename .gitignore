@@ -20,3 +20,7 @@ chroma_db/
 # IDE
 .vscode/
 .idea/
+
+# Sensitive files
+obi-chat-storage-*.json
+streamlit_secrets.toml
