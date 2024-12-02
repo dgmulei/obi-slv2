@@ -37,10 +37,6 @@ def display_user_info(user: Dict[str, Any]) -> None:
             logger.error(f"Error displaying user info: {str(e)}")
             st.error("Error displaying user information")
 
-def _format_section(title: str, content: str) -> str:
-    """Format a section with title and content."""
-    return f"### {title}\n\n```text\n{content}\n```"
-
 def get_case_file_content(context: ConversationContext, conversation_manager: ConversationManager) -> Optional[str]:
     """Get the formatted case file content showing Claude's Tier One memory."""
     try:
@@ -49,40 +45,41 @@ def get_case_file_content(context: ConversationContext, conversation_manager: Co
             
         # Get the enhanced manager for this context
         enhanced_manager = conversation_manager.session_manager.enhanced_managers.get(context.thread_id)
-        if not enhanced_manager or not enhanced_manager.system_prompt:
+        if not enhanced_manager or not enhanced_manager.current_project_folder:
             return None
             
-        formatted_sections = []
+        sections = []
         
-        # 1. System Instructions
-        system_rules = enhanced_manager.system_prompt.split('USER PROFILE')[0].strip()
-        formatted_sections.append(_format_section("SYSTEM INSTRUCTIONS", system_rules))
+        # 1. Formatted Summary (from ProjectFolder)
+        sections.append("=== FORMATTED SUMMARY ===")
+        sections.append(enhanced_manager.current_project_folder.get_context_summary())
         
-        # 2. User Profile
-        profile_yaml = context.active_user_profile
-        formatted_sections.append(_format_section("USER PROFILE", str(profile_yaml)))
+        # 2. Everything Claude Sees
+        sections.append("\n=== CLAUDE'S CONTEXT ===")
         
-        # 3. Communication Parameters
-        comm_params = []
+        # System Instructions
+        sections.append("# System Instructions")
+        sections.append(enhanced_manager.system_prompt)
         
-        # Add current numerical values
-        if enhanced_manager.current_project_folder and hasattr(enhanced_manager.current_project_folder, 'calibrated_controls'):
+        # User Profile
+        sections.append("\n# User Profile")
+        sections.append(str(context.active_user_profile))
+        
+        # Current Communication State
+        sections.append("\n# Communication Parameters")
+        if enhanced_manager.current_project_folder:
             controls = enhanced_manager.current_project_folder.calibrated_controls
-            comm_params.append("Current Values:")
+            sections.append("Current Values:")
             for key, value in controls.items():
-                comm_params.append(f"{key}: {value}")
-            comm_params.append("")
+                sections.append(f"{key}: {value}")
+            
+            if enhanced_manager.latest_calibration_message:
+                sections.append("\nLatest Update:")
+                sections.append(enhanced_manager.latest_calibration_message['content'])
         
-        # Add active instructions
-        if enhanced_manager.latest_calibration_message:
-            content = enhanced_manager.latest_calibration_message['content']
-            content = content.replace("[COMMUNICATION UPDATE] ", "")
-            comm_params.append("Active Instructions:")
-            comm_params.extend(content.split('\n'))
-        
-        formatted_sections.append(_format_section("COMMUNICATION PARAMETERS", '\n'.join(comm_params)))
-        
-        return '\n\n'.join(formatted_sections)
+        # Join sections and wrap in code block
+        sections_text = '\n'.join(sections)
+        return f"```text\n{sections_text}\n```"
         
     except Exception as e:
         logger.error(f"Error getting case file content: {str(e)}")

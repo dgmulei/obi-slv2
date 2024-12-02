@@ -19,6 +19,7 @@ class ProjectFolder:
     user_profile: Dict[str, Any]
     system_prompt: str
     calibrated_controls: Dict[str, Any]
+    latest_calibration_message: Optional[Dict[str, str]] = None
 
     def get_context_summary(self) -> str:
         """Get formatted summary of user context with prioritized information."""
@@ -96,6 +97,12 @@ class ProjectFolder:
             if occupation := personal.get('occupation'):
                 summary.append(f"Occupation: {occupation}")
             summary.append("")
+            
+        # Latest Communication Update
+        if self.latest_calibration_message:
+            summary.append("=== LATEST COMMUNICATION UPDATE ===")
+            summary.append(self.latest_calibration_message['content'])
+            summary.append("")
 
         return "\n".join(summary)
 
@@ -126,22 +133,45 @@ class EnhancedConversationManager:
         """Validate profile structure exists."""
         return isinstance(profile, dict)
 
+    def _get_communication_preferences(self) -> Dict[str, Any]:
+        """Get communication preferences in the correct structure."""
+        if not self.user_profile:
+            logger.warning("No user profile available")
+            return {}
+            
+        # Get preferences from metadata
+        preferences = self.user_profile.get('metadata', {}).get('communication_preferences', {})
+        logger.info(f"Getting communication preferences: {preferences}")
+        
+        # Create properly structured dict
+        return {
+            'communication_preferences': preferences
+        }
+
     def initialize_session(self, user_profile: Dict[str, Any]) -> None:
         """Initialize session with user profile."""
         try:
-            logger.info(f"Initializing profile for: {user_profile.get('personal', {}).get('full_name')}")
+            # Log full profile for debugging
+            logger.info("Initializing session with profile:")
+            logger.info(f"Personal Info: {user_profile.get('personal', {})}")
+            logger.info(f"Metadata: {user_profile.get('metadata', {})}")
             
             # Use profile as-is
             self.user_profile = user_profile
             
-            calibrated_controls = self.style_calibrator.calibrate_structured_controls(
-                user_profile.get('metadata', {}).get('communication_controls', {})
-            )
+            # Get preferences in correct structure
+            preferences = self._get_communication_preferences()
+            logger.info(f"Using structured preferences: {preferences}")
+            
+            # Get calibrated controls
+            calibrated_controls = self.style_calibrator.calibrate_structured_controls(preferences)
+            logger.info(f"Calibrated Controls: {calibrated_controls}")
             
             self.current_project_folder = ProjectFolder(
                 user_profile=user_profile,
                 system_prompt="",
-                calibrated_controls=calibrated_controls
+                calibrated_controls=calibrated_controls,
+                latest_calibration_message=None
             )
             
             self._update_system_prompt()
@@ -163,29 +193,36 @@ class EnhancedConversationManager:
             self.communication_controller.update_differentiation_level(value)
             
             if self.session_initialized and self.user_profile:
-                calibrated_controls = self.style_calibrator.calibrate_structured_controls(
-                    self.user_profile.get('metadata', {}).get('communication_controls', {})
-                )
+                # Get preferences in correct structure
+                preferences = self._get_communication_preferences()
+                logger.info(f"Using structured preferences: {preferences}")
                 
-                self.current_project_folder = ProjectFolder(
-                    user_profile=self.user_profile,
-                    system_prompt=self.system_prompt,
-                    calibrated_controls=calibrated_controls
-                )
-                
-                self._update_system_prompt()
+                # Get new calibrated controls
+                calibrated_controls = self.style_calibrator.calibrate_structured_controls(preferences)
+                logger.info(f"New calibrated controls: {calibrated_controls}")
                 
                 # Generate behavioral instructions
                 style_instructions = self.communication_controller.generate_style_instructions(
                     calibrated_controls,
                     self.style_calibrator.differentiation_level
                 )
+                logger.info(f"Generated style instructions: {style_instructions}")
                 
                 # Create calibration message with behavioral instructions
                 self.latest_calibration_message = {
                     "role": "assistant",
                     "content": f"[COMMUNICATION UPDATE] {style_instructions}"
                 }
+                
+                # Update project folder with new controls and message
+                self.current_project_folder = ProjectFolder(
+                    user_profile=self.user_profile,
+                    system_prompt=self.system_prompt,
+                    calibrated_controls=calibrated_controls,
+                    latest_calibration_message=self.latest_calibration_message
+                )
+                
+                self._update_system_prompt()
                 
         except Exception as e:
             logger.error(f"Error updating differentiation level: {str(e)}")
@@ -230,16 +267,66 @@ class EnhancedConversationManager:
             if not self.user_profile:
                 return
                 
-            calibrated_controls = self.style_calibrator.calibrate_structured_controls(
-                self.user_profile.get('metadata', {}).get('communication_controls', {})
-            )
+            # Get preferences in correct structure
+            preferences = self._get_communication_preferences()
+            logger.info(f"Using structured preferences: {preferences}")
+                
+            calibrated_controls = self.style_calibrator.calibrate_structured_controls(preferences)
+            logger.info(f"System prompt calibrated controls: {calibrated_controls}")
             
             system_template = """SYSTEM RULES:
-- You are a Massachusetts RMV license renewal guide
-- CRITICAL: Monitor and alert on ALL restrictions and violations
-- CRITICAL: Flag ANY expired or expiring documents IMMEDIATELY
-- CRITICAL: Verify license status in EVERY interaction
-- CRITICAL: Check documentation requirements ALWAYS
+
+You are a professional guide helping Massachusetts citizens renew their driver's licenses.
+NEVER use exclamation points. 
+Use natural questions to guide the conversation forward, ensuring they flow from the discussion rather than feeling tacked on. Your goal is to guide effectively, matching each user's preferred communication style.
+
+INITIAL CONTACT GUIDELINES
+1. Always keep the first response under 50 words and end with a question. 
+2. First response must establish the following and be grounded in "bagman_description" insights:
+- Appropriate formality level
+- Tone
+- Recognition of immediate needs
+- Clear next step
+- Brief qualifying question
+3. NEVER give a numbered list or bullet list in the first response.
+
+INFORMATION HANDLING:
+1. Available Information:
+    - State it confidently.
+    - Adjust context based on user profile details, especially "bagman_description"
+2. Partially Available Information:
+    - Share what you know.
+    - Tailor verification approach
+3. Unavailable Information:
+    - Acknowledge limitations transparently.
+    - Focus on next steps.
+    - Profile-based resource sharing, with a priority given to "bagman_description" insights
+4. Complex Scenarios:
+            - Collaborate with users by providing step-by-step guidance and connecting details from different sections when necessary.
+            - Guide users to official verification when necessary.
+
+TONE AND STYLE:
+1. Never use exclamation points. Maintain a calm, professional tone that conveys confidence without excessive enthusiasm.
+2. Adjust formality based on user profile, with a priority given to "bagman_description" insights.
+3. Acknowledge user effort by describing their actions in a straightforward and professional manner, focusing on what they've done or are ready to do without overly praising or labeling behavior (e.g., avoid terms like "proactive").
+4. Empathize with challenges based on user input, but avoid over-empathizing. For users who may value reassurance, offer calm and supportive guidance. For users who prefer efficiency, briefly acknowledge obstacles and move quickly to actionable solutions.
+5. Avoid excessive praise, but offer practical encouragement to build confidence and keep users engaged.
+6. Adjust the pacing and level of detail based on user preferences, with a priority given to "bagman_description" insights:
+
+BEHAVIORAL GUIDANCE:
+1. Use document information confidently when available.
+2. Synthesize related information into one clear, actionable step at a time.
+3. Frame solutions in user-specific terms that align with the user's needs and preferences, with a priority given to "bagman_description" insights.
+4. Recommend helpful actions (e.g., scheduling appointments or gathering documents). Adapt recommendations to user preferences and personality traits. 
+5. Present information for confirmation when needed.
+6. If users express frustration or confusion, immediately switch to one-clear-step-at-a-time guidance.
+7. Ensure accessibility for users with disabilities or special needs.
+    
+IMPORTANT:
+- Monitor and alert on ALL restrictions and violations
+- Flag ANY expired or expiring documents IMMEDIATELY
+- Verify license status in EVERY interaction
+- Check documentation requirements ALWAYS
 - Consider payment preferences for transactions
 - Provide clear step-by-step guidance
 - Only link to official RMV pages
@@ -264,15 +351,11 @@ ATTENTION REQUIREMENTS:
    - General inquiries
 
 USER CONTEXT:
-{context_summary}
-
-COMMUNICATION PARAMETERS:
-{calibration_display}"""
+{context_summary}"""
 
             if self.current_project_folder:
                 system_template = system_template.format(
-                    context_summary=self.current_project_folder.get_context_summary(),
-                    calibration_display=self.style_calibrator.get_case_file_display()
+                    context_summary=self.current_project_folder.get_context_summary()
                 )
             
             self.system_prompt = system_template

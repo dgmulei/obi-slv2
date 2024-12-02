@@ -1,9 +1,277 @@
-# Obi - Massachusetts RMV Service Agent Technical Documentation
+# Obi Technical Reference
 
-## Core Architecture
+## Core Components
+
+### StyleCalibrator
+```python
+class StyleCalibrator:
+    """
+    Preserves user's raw communication preferences (1-5 scale).
+    No value blending - preferences stay pure at all differentiation levels.
+    """
+    def calibrate_structured_controls(self, user_preferences: Dict[str, Any]) -> Dict[str, Any]:
+        # Get communication preferences
+        comm_prefs = user_preferences.get('communication_preferences', {})
+        
+        # Use raw values (1-5 scale)
+        return {
+            'interaction_style': comm_prefs.get('interaction_style', 3),  # methodical (1) to efficient (5)
+            'detail_level': comm_prefs.get('detail_level', 3),      # maximum (1) to minimal (5)
+            'rapport_level': comm_prefs.get('rapport_level', 3)     # personal (1) to professional (5)
+        }
+```
+
+### CommunicationController
+```python
+class CommunicationController:
+    """
+    Formats [COMMUNICATION UPDATE] messages with three parts:
+    1. Raw preferences (preserved)
+    2. Behavioral guidance (matches preferences)
+    3. Application guidance (varies with level)
+    """
+    def generate_style_instructions(self, controls: Dict[str, Any], level: float) -> str:
+        instructions = []
+        
+        # 1. Raw Preferences
+        instructions.append("Please adjust your communication style:")
+        instructions.append(f"• Interaction Style: {controls['interaction_style']} ({'efficient' if controls['interaction_style'] >= 4 else 'methodical' if controls['interaction_style'] <= 2 else 'balanced'})")
+        instructions.append(f"• Detail Level: {controls['detail_level']} ({'minimal' if controls['detail_level'] >= 4 else 'maximum' if controls['detail_level'] <= 2 else 'balanced'})")
+        instructions.append(f"• Rapport Level: {controls['rapport_level']} ({'professional' if controls['rapport_level'] >= 4 else 'personal' if controls['rapport_level'] <= 2 else 'balanced'})")
+        
+        # 2. Behavioral Guidance (matches preferences)
+        instructions.append("\nBehavioral Guidance:")
+        if controls['interaction_style'] >= 4:
+            instructions.extend([
+                "• Communicate directly and efficiently",
+                "• Focus on key points and actions"
+            ])
+        elif controls['interaction_style'] <= 2:
+            instructions.extend([
+                "• Break down information into clear steps",
+                "• Provide structured, methodical guidance"
+            ])
+            
+        if controls['detail_level'] >= 4:
+            instructions.extend([
+                "• Focus on essential information only",
+                "• Keep explanations brief and targeted"
+            ])
+        elif controls['detail_level'] <= 2:
+            instructions.extend([
+                "• Include comprehensive explanations",
+                "• Provide relevant background information"
+            ])
+            
+        if controls['rapport_level'] >= 4:
+            instructions.extend([
+                "• Keep tone formal and professional",
+                "• Focus on facts and procedures"
+            ])
+        elif controls['rapport_level'] <= 2:
+            instructions.extend([
+                "• Maintain a warm, personal approach",
+                "• Show empathy and understanding"
+            ])
+        
+        # 3. Application Guidance (varies with level)
+        if level <= 30:
+            instructions.extend([
+                "\n>>> CONTEXT USAGE LEVEL: MINIMAL (0-30) <<<",
+                "APPLY PREFERENCES WITH MINIMAL ADHERENCE:",
+                "• Start with standardized RMV procedures as your base",
+                "• Consider the user's preferences shown above as minor adjustments only",
+                "• Keep responses primarily focused on standard protocol",
+                "• Use personal context only when directly relevant to procedures"
+            ])
+        elif level <= 70:
+            instructions.extend([
+                "\n>>> CONTEXT USAGE LEVEL: MODERATE (31-70) <<<",
+                "APPLY PREFERENCES WITH MODERATE ADHERENCE:",
+                "• Balance standard RMV procedures with user's preferences",
+                "• Incorporate their preferred style while maintaining protocol",
+                "• Adapt responses while staying process-focused",
+                "• Use context to enhance understanding when appropriate"
+            ])
+        else:
+            instructions.extend([
+                "\n>>> CONTEXT USAGE LEVEL: STRICT (71-100) <<<",
+                "APPLY PREFERENCES WITH STRICT ADHERENCE:",
+                "• Make user's preferred communication style your primary guide",
+                "• Fully embrace their preferences shown above",
+                "• Maintain professionalism while maximizing personalization",
+                "• Actively use context to enhance relevance"
+            ])
+        
+        return "\n".join(instructions)
+```
+
+### EnhancedConversationManager
+```python
+class EnhancedConversationManager:
+    """
+    Manages message flow and context display.
+    Preserves preferences while controlling their application.
+    """
+    def _get_communication_preferences(self) -> Dict[str, Any]:
+        """Get communication preferences in the correct structure."""
+        if not self.user_profile:
+            return {}
+            
+        # Get preferences from metadata
+        preferences = self.user_profile.get('metadata', {}).get('communication_preferences', {})
+        
+        # Create properly structured dict
+        return {
+            'communication_preferences': preferences
+        }
+
+    def update_differentiation_level(self, value: float) -> None:
+        """Update differentiation level and recalibrate."""
+        try:
+            # Get preferences in correct structure
+            preferences = self._get_communication_preferences()
+            
+            # Get calibrated controls (raw preferences)
+            calibrated_controls = self.style_calibrator.calibrate_structured_controls(preferences)
+            
+            # Generate behavioral instructions
+            style_instructions = self.communication_controller.generate_style_instructions(
+                calibrated_controls,
+                value  # differentiation_level controls application
+            )
+            
+            # Create calibration message
+            self.latest_calibration_message = {
+                "role": "assistant",
+                "content": f"[COMMUNICATION UPDATE] {style_instructions}"
+            }
+            
+            # Update project folder
+            self.current_project_folder = ProjectFolder(
+                user_profile=self.user_profile,
+                system_prompt=self.system_prompt,
+                calibrated_controls=calibrated_controls,
+                latest_calibration_message=self.latest_calibration_message
+            )
+            
+        except Exception as e:
+            logger.error(f"Error updating differentiation level: {str(e)}")
+            raise
+```
+
+### Case File Display
+```python
+def get_case_file_content(context: ConversationContext, conversation_manager: ConversationManager) -> Optional[str]:
+    """
+    Shows both formatted summary and complete context.
+    """
+    try:
+        if not context.active_user_profile:
+            return None
+            
+        enhanced_manager = conversation_manager.session_manager.enhanced_managers.get(context.thread_id)
+        if not enhanced_manager or not enhanced_manager.current_project_folder:
+            return None
+            
+        sections = []
+        
+        # 1. Formatted Summary (user-friendly)
+        sections.append("=== FORMATTED SUMMARY ===")
+        sections.append(enhanced_manager.current_project_folder.get_context_summary())
+        
+        # 2. Claude's Context (complete system view)
+        sections.append("\n=== CLAUDE'S CONTEXT ===")
+        sections.append("# System Instructions")
+        sections.append(enhanced_manager.system_prompt)
+        sections.append("\n# User Profile")
+        sections.append(str(context.active_user_profile))
+        sections.append("\n# Communication Parameters")
+        sections.append(str(enhanced_manager.latest_calibration_message))
+        
+        # Join sections and wrap in code block
+        sections_text = '\n'.join(sections)
+        return f"```text\n{sections_text}\n```"
+        
+    except Exception as e:
+        logger.error(f"Error getting case file content: {str(e)}")
+        return None
+```
+
+## Message Flow
+
+### [COMMUNICATION UPDATE] Structure
+
+The system uses a consistent three-part message structure:
+
+1. Raw Preferences (always preserved)
+   ```
+   Please adjust your communication style:
+   • Interaction Style: 5 (efficient)
+   • Detail Level: 5 (minimal)
+   • Rapport Level: 5 (professional)
+   ```
+
+2. Behavioral Guidance (matches preferences)
+   ```
+   Behavioral Guidance:
+   • Communicate directly and efficiently
+   • Focus on key points and actions
+   • Focus on essential information only
+   • Keep explanations brief and targeted
+   • Keep tone strictly professional
+   • Focus on facts and procedures
+   ```
+
+3. Application Guidance (varies with level)
+   ```
+   At level 0:
+   >>> CONTEXT USAGE LEVEL: MINIMAL (0-30) <<<
+   APPLY PREFERENCES WITH MINIMAL ADHERENCE:
+   • Start with standardized procedures
+   • Consider preferences as minor adjustments
+   • Keep responses protocol-focused
+
+   At level 50:
+   >>> CONTEXT USAGE LEVEL: MODERATE (31-70) <<<
+   APPLY PREFERENCES WITH MODERATE ADHERENCE:
+   • Balance procedures with preferences
+   • Incorporate preferred style while maintaining protocol
+   • Adapt responses while staying process-focused
+
+   At level 100:
+   >>> CONTEXT USAGE LEVEL: STRICT (71-100) <<<
+   APPLY PREFERENCES WITH STRICT ADHERENCE:
+   • Make preferences primary guide
+   • Fully embrace preferred style
+   • Maximize personalization while professional
+   ```
+
+### Case File Organization
+
+The display shows both user-friendly summary and complete system context:
+
+1. FORMATTED SUMMARY
+   - Critical License Information
+   - Documentation Status
+   - Payment Information
+   - Personal Information
+   - Latest Communication Update showing:
+     * User preferences (1-5)
+     * Behavioral guidance
+     * Application level
+
+2. CLAUDE'S CONTEXT
+   - Complete system instructions
+   - Raw user profile data
+   - Communication parameters including:
+     * Current preference values
+     * Latest [COMMUNICATION UPDATE]
+     * Application guidance
+
+## Error Handling
 
 ### Enhanced Error Handling
-
 ```python
 def get_response(self, message: str) -> str:
     try:
@@ -26,282 +294,9 @@ def get_response(self, message: str) -> str:
             )
 ```
 
-### Context Intelligence Scaling
+## Development Guidelines
 
-```python
-class StyleCalibrator:
-    def calibrate_controls(self, differentiation_level: float) -> Dict[str, float]:
-        # Level 0 Behavior (Pure System)
-        if differentiation_level == 0:
-            return {
-                "interaction_style": self.system_defaults["interaction_style"],
-                "detail_level": self.system_defaults["detail_level"],
-                "rapport_level": self.system_defaults["rapport_level"]
-            }
-        
-        # Linear scaling from system defaults to user preferences
-        weight = min(1.0, differentiation_level / 100.0)
-        
-        # Feature thresholds
-        if weight < 0.3:
-            # Minimal personalization
-            weight *= 0.5
-        elif weight < 0.5:
-            # Moderate personalization
-            weight *= 0.75
-            
-        return {
-            "interaction_style": self._calculate_weighted_value("interaction_style", weight),
-            "detail_level": self._calculate_weighted_value("detail_level", weight),
-            "rapport_level": self._calculate_weighted_value("rapport_level", weight)
-        }
-```
-
-### Enhanced Context Management
-
-```python
-@dataclass
-class ProjectFolder:
-    """Represents the comprehensive context for a user session."""
-    user_profile: Dict[str, Any]
-    system_prompt: str
-    calibrated_controls: Dict[str, Any]
-
-    def get_context_summary(self) -> str:
-        """Get formatted summary of user context with prioritized information."""
-        profile = self.user_profile
-        summary = []
-
-        # Critical License Information first
-        if license_info := profile.get('license', {}).get('current', {}):
-            summary.append("=== CRITICAL LICENSE INFORMATION ===")
-            if type_ := license_info.get('type'):
-                summary.append(f"Type: {type_}")
-            if expiration := license_info.get('expiration'):
-                summary.append(f"EXPIRATION: {expiration}")
-            if restrictions := license_info.get('restrictions', []):
-                summary.append(f"RESTRICTIONS: {', '.join(restrictions)}")
-
-        # Documentation Status
-        if docs := profile.get('documentation', {}):
-            summary.append("=== DOCUMENTATION STATUS ===")
-            for doc_type, doc_info in docs.items():
-                if isinstance(doc_info, dict):
-                    status = doc_info.get('status', 'Unknown')
-                    expiry = doc_info.get('expiration', 'Not specified')
-                    summary.append(f"{doc_type}: {status} (Expires: {expiry})")
-
-        return "\n".join(summary)
-```
-
-### Profile Management
-
-```python
-class PersonalInfo(TypedDict, total=False):
-    full_name: str
-    primary_language: str
-    email: Optional[str]
-    phone: Optional[str]
-    dob: Optional[str]  # Optional date of birth
-
-class UserProfile(TypedDict):
-    personal: PersonalInfo
-    addresses: Dict[str, AddressInfo]
-    license: LicenseInfo
-    documentation: Dict[str, Any]
-    additional: Dict[str, Any]
-    health: Dict[str, Any]
-    payment: Dict[str, Any]
-    metadata: Dict[str, Any]
-    communication_preferences: CommunicationPreferences
-```
-
-### Message Flow Architecture
-
-The system implements a sophisticated message flow that combines:
-1. Base System Context: Provided through system prompt
-2. Dynamic Calibration: Delivered through in-conversation messages
-3. User Interaction: Maintained through message history
-4. Context Markers: Track numbered lists, reference points, and key details
-
-Key aspects:
-- Calibration updates are sent as assistant messages
-- Each user message includes the latest calibration context
-- System prompt includes instruction to handle [COMMUNICATION UPDATE] messages
-- Only the most recent calibration is maintained and used
-- Conversation context is preserved across all intelligence levels
-- Profile data is cached with TTL for consistent access
-
-### Case File Display Architecture
-
-The Case File display is organized into clear sections:
-
-1. System Instructions
-   - Raw system rules/parameters sent to Claude
-   - Core service parameters
-   - Base context information
-
-2. User Profile
-   - Complete YAML profile
-   - Metadata and descriptions
-   - Static profile data
-
-3. Communication Parameters
-   - Current numerical values
-   - Active instructions
-   - Real-time calibration state
-
-4. Active Alerts
-   - Violations
-   - Restrictions
-   - Payment issues
-   - Critical notifications
-
-5. Support System
-   - Emergency contacts
-   - Previous assistance history
-   - Professional status
-   - Support network details
-
-6. Behavioral Guidance
-   - Differentiation level
-   - Style instructions
-   - Context usage parameters
-   - Current calibration state
-
-7. System State
-   - Context awareness level
-   - Active memory status
-   - Current calibration
-   - Debug information
-
-### Claude API Integration
-
-The system integrates with Claude's Messages API following these principles:
-1. System-level instructions via top-level system parameter
-2. Dynamic updates via in-conversation assistant messages
-3. Clear message role separation (system vs assistant vs user)
-4. Explicit update markers for clear instruction handling
-5. Context validation before each response
-6. Automatic fallback to Claude-3-Opus when Sonnet is overloaded
-
-### System Components
-
-#### EnhancedConversationManager
-- Manages conversation flow and context
-- Handles Claude API interactions with fallback mechanism
-- Maintains calibration state
-- Processes user messages
-- Implements conversation memory
-- Validates context completeness
-- Manages ProjectFolder for comprehensive session context
-
-#### StyleCalibrator
-- Converts slider values (0-100) to calibrated controls
-- Maintains differentiation levels
-- Provides structured communication instructions
-- Implements linear scaling with thresholds
-- Ensures clean separation between system and user preferences
-
-#### ConversationManager
-- Coordinates multiple conversations
-- Manages user profiles with TTL caching
-- Handles session initialization
-- Coordinates with storage system
-- Maintains conversation markers
-- Implements profile validation
-
-### Data Flow
-
-#### Message Processing
-1. User sends message
-2. Context validation performed
-3. Latest calibration included
-4. System prompt provides base context
-5. Conversation markers updated
-6. Claude processes complete context
-7. Response maintains calibrated style
-8. Fallback handling if needed
-
-#### Context Updates
-1. Slider adjustment triggers update
-2. New calibration message created
-3. Stored as latest calibration
-4. Applied to next message
-5. Previous calibrations superseded
-6. Context markers preserved
-
-### Security Considerations
-
-#### API Security
-- Secure API key handling
-- Rate limiting implementation
-- Error handling and fallbacks
-- Secure message processing
-
-#### Data Protection
-- User profile security
-- Message encryption
-- Secure storage handling
-- Access control implementation
-- Profile data validation
-- Cached data TTL enforcement
-
-### Error Handling
-
-#### API Errors
-- Model overload handling with automatic fallback
-- Fallback model implementation (Claude-3-Opus)
-- Error logging and tracking
-- Graceful degradation
-
-#### System Errors
-- Exception handling
-- Error logging
-- User feedback
-- Recovery procedures
-- Profile validation errors
-- Context validation failures
-
-### Performance Optimization
-
-#### Message Efficiency
-- Minimal message payload
-- Efficient calibration updates
-- Optimized message flow
-- Response caching when appropriate
-- Profile data caching
-- Context marker optimization
-
-#### System Resources
-- Memory management
-- API call optimization
-- Storage efficiency
-- Processing optimization
-- Cache TTL management
-- Context validation efficiency
-
-### Monitoring and Logging
-
-#### System Logs
-- API interaction logging
-- Error tracking
-- Performance monitoring
-- Usage statistics
-- Profile validation results
-- Context validation status
-
-#### User Interaction
-- Message success rates
-- Response times
-- Calibration effectiveness
-- User engagement metrics
-- Context persistence metrics
-- Profile access patterns
-
-### Development Guidelines
-
-#### Code Standards
+### Code Standards
 - Clear documentation
 - Consistent formatting
 - Error handling
@@ -309,7 +304,7 @@ The system integrates with Claude's Messages API following these principles:
 - Context validation
 - Profile validation
 
-#### Testing Requirements
+### Testing Requirements
 - Unit test coverage
 - Integration testing
 - API interaction tests
@@ -317,9 +312,9 @@ The system integrates with Claude's Messages API following these principles:
 - Context persistence tests
 - Profile validation tests
 
-### Deployment Considerations
+## Deployment Considerations
 
-#### Environment Setup
+### Environment Setup
 - API key configuration
 - Storage setup
 - Security implementation
@@ -327,28 +322,10 @@ The system integrates with Claude's Messages API following these principles:
 - Cache configuration
 - Profile storage setup
 
-#### Maintenance
+### Maintenance
 - Regular updates
 - Performance monitoring
 - Security patches
 - System backups
 - Cache maintenance
 - Profile data cleanup
-
-### Future Enhancements
-
-#### Planned Features
-- Enhanced analytics
-- Additional integrations
-- Performance improvements
-- Extended functionality
-- Advanced context tracking
-- Profile optimization
-
-#### Optimization Areas
-- Response time
-- Memory usage
-- Storage efficiency
-- API utilization
-- Context persistence
-- Profile caching

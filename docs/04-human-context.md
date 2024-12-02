@@ -9,20 +9,41 @@ Obi transforms bureaucratic processes into personalized interactions through thr
 
 ## How Obi Understands People
 
-### Profile Intelligence
-Obi analyzes multiple dimensions:
-- Professional context (work schedule, time constraints)
-- Documentation preferences (digital vs. paper)
-- Support systems (family assistance, professional networks)
-- Historical interactions with RMV
-- Health and accessibility needs
+### Communication Preferences
+Obi recognizes that different people prefer different communication styles:
 
-Example: A retired teacher with vision concerns gets different support than a surgeon between emergency surgeries.
+1. Interaction Style (1-5)
+   - Methodical (1): Step-by-step, structured guidance
+   - Efficient (5): Direct, focused on key points
+
+2. Detail Level (1-5)
+   - Maximum (1): Comprehensive explanations with background
+   - Minimal (5): Essential information only
+
+3. Rapport Level (1-5)
+   - Personal (1): Warm, empathetic approach
+   - Professional (5): Formal, fact-focused
 
 ### Context Intelligence Scale (0-100)
-- **0-30**: Standard service protocols
-- **31-70**: Contextual adaptation
-- **71-100**: Deep personalization
+The system preserves each user's communication preferences while controlling how strictly to apply them:
+
+1. MINIMAL ADHERENCE (0-30)
+   - Start with standardized procedures
+   - Consider preferences as minor adjustments
+   - Keep responses protocol-focused
+   Example: Even if Dr Chen prefers minimal details (5), we still provide standard information, just organized efficiently.
+
+2. MODERATE ADHERENCE (31-70)
+   - Balance procedures with preferences
+   - Incorporate preferred style while maintaining protocol
+   - Adapt responses while staying process-focused
+   Example: For Harry who prefers methodical guidance (1), we provide step-by-step instructions while keeping standard procedures in view.
+
+3. STRICT ADHERENCE (71-100)
+   - Make preferences primary guide
+   - Fully embrace preferred style
+   - Maximize personalization while professional
+   Example: Dr Chen gets extremely efficient, minimal-detail, professional communication focused on key action items.
 
 ## Technical Systems Through a Human Lens
 
@@ -32,75 +53,82 @@ Example: A retired teacher with vision concerns gets different support than a su
    - Family support understanding
    - Documentation status
    - Special needs or restrictions
+   - Communication preferences
 
 2. **Active Conversation**
    - Real-time emotional state
    - Current challenges
    - Immediate needs
    - Progress tracking
+   - Application level
 
 ### Adaptive Response System
-Obi adjusts across multiple dimensions:
-- Communication pace
-- Detail level
-- Technical language
-- Step-by-step guidance
-- Reassurance level
+Obi adjusts based on:
+1. User's Natural Style
+   - Preferred interaction pace
+   - Desired detail level
+   - Comfort with formality
+   - Need for reassurance
+
+2. Situational Needs
+   - Time constraints
+   - Documentation requirements
+   - Support system availability
+   - Special considerations
 
 ## Real-World Impact
 
 ### Case Study 1: Senior Support
-Harold needs to renew his license with night driving restrictions:
-- System recognizes potential vision concerns
-- Coordinates with family support system
-- Provides paper documentation options
-- Offers step-by-step guidance
+Harry (preferences: methodical-1, maximum detail-1, personal-1):
+- System recognizes need for step-by-step guidance
+- Provides comprehensive explanations
+- Maintains warm, reassuring tone
+- Coordinates with family support
 - Confirms understanding at each stage
 
 ### Case Study 2: Professional Accommodation
-Dr. Chen requires license renewal while managing unpaid violations:
-- Recognizes time constraints of medical profession
-- Prioritizes efficiency
-- Provides clear action items
-- Maintains professional tone
-- Addresses violations systematically
+Dr Chen (preferences: efficient-5, minimal detail-5, professional-5):
+- Recognizes time constraints
+- Provides concise, focused information
+- Maintains strictly professional tone
+- Prioritizes key action items
+- Streamlines necessary procedures
 
 ## Error Recovery and Support
 
-The system provides:
-- Graceful handling of confusion
-- Clear path to resolution
-- Alternative contact methods
-- Family support integration
-- Professional accommodation
+The system adapts recovery to preferences:
+- Methodical users get step-by-step correction
+- Efficient users get focused solutions
+- Detail-oriented users get full explanations
+- Action-oriented users get clear next steps
 
 ## Development Priorities
 
 Future enhancements focus on:
-1. Expanded support system integration
-2. Enhanced accessibility features
-3. Deeper professional context understanding
-4. Improved situation adaptation
-5. Advanced error prevention
+1. Deeper preference understanding
+2. More nuanced application levels
+3. Enhanced style adaptation
+4. Improved context awareness
+5. Advanced personalization
 
 ## Training Focus Areas
 
 For support staff and developers:
-1. Profile interpretation
-2. Context intelligence utilization
-3. Error recognition and recovery
-4. Support system engagement
-5. Professional accommodation
+1. Understanding preference scales
+2. Recognizing communication styles
+3. Adapting application strength
+4. Balancing protocol and preferences
+5. Maintaining personalization
 
 ## Success Metrics
 
 Measure system effectiveness through:
-1. Task completion rates
-2. Support system utilization
-3. Error recovery speed
+1. Style match accuracy
+2. Preference preservation
+3. Application level appropriateness
 4. User satisfaction scores
-5. Professional accommodation success
+5. Task completion rates
 
 ## Conclusion
 
-Obi's success relies on translating technical capabilities into human understanding. This creates a service that's not just efficient, but genuinely helpful to every citizen it serves.
+Obi's success comes from understanding not just what users need to do, but how they prefer to do it. By preserving their natural communication style while adapting the strength of its application, the system creates interactions that feel both personal and professional.

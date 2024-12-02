@@ -7,15 +7,21 @@ An AI-powered service agent that provides personalized assistance for Massachuse
 ### 1. Personalized Assistance
 - Dynamic user profiling with TTL caching
 - Context-aware responses with persistence
-- Adaptive communication styles
+- Adaptive communication styles (1-5 scale):
+  * Interaction Style: methodical (1) to efficient (5)
+  * Detail Level: maximum (1) to minimal (5)
+  * Rapport Level: personal (1) to professional (5)
 - Real-time style adjustments
 - Strict profile validation
 
 ### 2. Context Intelligence
 - Slider-based context control (0-100)
-- Linear scaling with feature thresholds
+- User preferences preserved (1-5 scale)
 - Clean system/user preference separation
-- Predictable scaling behavior
+- Three application levels:
+  * MINIMAL (0-30): Consider preferences as minor adjustments
+  * MODERATE (31-70): Balance preferences with protocol
+  * STRICT (71-100): Make preferences primary guide
 - Reliable context preservation
 - Conversation memory tracking
 
@@ -66,33 +72,46 @@ streamlit run dev/run_local.py
 
 ### 2. User Interface
 - **Context Intelligence Slider**: Adjust interaction depth (0-100)
-  - 0-30: Pure system responses
-  - 31-50: Moderate personalization
-  - 51-100: Full personalization
+  * MINIMAL (0-30): Consider preferences as minor adjustments
+  * MODERATE (31-70): Balance preferences with protocol
+  * STRICT (71-100): Make preferences primary guide
 - **Dual Citizen Interface**: Manage multiple conversations
-- **Enhanced Case File Display**: View comprehensive context through organized sections:
-  - System Instructions: Raw system rules/parameters sent to Claude
-  - User Profile: Complete YAML profile including metadata
-  - Communication Parameters: Current numerical values and active instructions
-  - Active Alerts: Critical information and restrictions
-  - Support System: Family and professional network details
-  - Behavioral Guidance: Current instructions to Claude
-  - System State: Debug information and status
+- **Enhanced Case File Display**: View comprehensive context:
+  1. FORMATTED SUMMARY
+     - Critical License Information
+     - Documentation Status
+     - Payment Information
+     - Personal Information
+     - Latest Communication Update
+  2. CLAUDE'S CONTEXT
+     - System Instructions
+     - User Profile
+     - Communication Parameters
+       * Current Values
+       * Latest Update showing:
+         - User preferences (1-5 scale)
+         - Behavioral guidance
+         - Application level (MINIMAL/MODERATE/STRICT)
 - **Chat Interface**: Interact with Obi
 
 ### 3. Context Control
-- Low (0-30): 
-  - System defaults only
-  - No personalization
-  - Basic context tracking
-- Medium (31-70): 
-  - Balanced personalization
-  - Enhanced context awareness
-  - Reference point tracking
-- High (71-100): 
-  - Full personalization
-  - Deep context integration
-  - Complete conversation memory
+- Low (0-30): MINIMAL ADHERENCE
+  * Start with standardized procedures
+  * Consider preferences as minor adjustments
+  * Keep responses protocol-focused
+  * Use context only when directly relevant
+
+- Medium (31-70): MODERATE ADHERENCE
+  * Balance procedures with preferences
+  * Incorporate preferred style while maintaining protocol
+  * Adapt responses while staying process-focused
+  * Use context to enhance understanding
+
+- High (71-100): STRICT ADHERENCE
+  * Make preferences primary guide
+  * Fully embrace preferred style
+  * Maximize personalization while professional
+  * Actively use context for relevance
 
 ## Development
 
@@ -136,9 +155,9 @@ users:
       primary_language: str
   - metadata:
       communication_preferences:
-        interaction_style: int
-        detail_level: int
-        rapport_level: int
+        interaction_style: int  # 1 (methodical) to 5 (efficient)
+        detail_level: int      # 1 (maximum) to 5 (minimal)
+        rapport_level: int     # 1 (personal) to 5 (professional)
 ```
 
 ### 2. Profile Management

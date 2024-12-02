@@ -1,75 +1,103 @@
-# Obi System Overview
+# Obi System Architecture
 
-## System Architecture
+## Core Components
 
-```mermaid
-graph TD
-    A[Streamlit App] --> B[ConversationManager]
-    B --> C[EnhancedConversationManager]
-    B --> D[ChatStorage]
-    
-    subgraph "Profile System"
-        E[user-profiles-yaml.txt] --> F[Profile Loader]
-        F --> B
-        F --> C
-        G[Profile Cache] --> F
-    end
-    
-    subgraph "Context Intelligence"
-        H[StyleCalibrator] --> C
-        I[CommunicationController] --> C
-        J[Context Slider] --> H
-        K[ConversationMarkers] --> C
-    end
-    
-    subgraph "Document System"
-        L[EmbeddingsManager] --> M[ChromaDB]
-        N[QueryEngine] --> M
-        N --> C
-    end
-    
-    subgraph "Storage System"
-        D --> O[Google Cloud Storage]
-        P[ChatRetrieval] --> O
-        Q[utils/chat_analysis.py] --> P
-    end
+### Context Intelligence
+The system maintains a clean separation between preferences and their application:
 
-    subgraph "Case File Display"
-        R[System Instructions] --> S[UI Components]
-        T[User Profile] --> S
-        U[Communication Parameters] --> S
-        V[Active Alerts] --> S
-        W[Support System] --> S
-        X[Behavioral Guidance] --> S
-        Y[System State] --> S
-        S --> A
-    end
-```
+1. User Preferences (1-5 scale)
+   - Preserved at all differentiation levels
+   - Interaction Style: methodical (1) to efficient (5)
+   - Detail Level: maximum (1) to minimal (5)
+   - Rapport Level: personal (1) to professional (5)
 
-## Core Components Interaction
+2. Behavioral Guidance
+   - Derived directly from preferences
+   - Consistent at all differentiation levels
+   - Example for efficient (5):
+     * "Communicate directly and efficiently"
+     * "Focus on key points and actions"
+     * "Keep explanations brief and targeted"
 
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant App as Streamlit App
-    participant CM as ConversationManager
-    participant ECM as EnhancedConversationManager
-    participant SC as StyleCalibrator
-    participant CC as ConversationContext
-    participant QE as QueryEngine
-    participant CS as ChatStorage
-    participant CF as Case File Display
+3. Application Control
+   - Controlled by differentiation_level (0-100)
+   - Three levels of adherence:
+     * MINIMAL (0-30): Consider preferences as minor adjustments
+     * MODERATE (31-70): Balance preferences with protocol
+     * STRICT (71-100): Make preferences primary guide
 
-    U->>App: Send Message
-    App->>CM: Process Message
-    CM->>ECM: Get Response
-    ECM->>SC: Get Style Calibration
-    ECM->>CC: Validate Context
-    ECM->>QE: Get Relevant Documents
-    ECM->>CF: Update Display Sections
-    ECM->>U: Return Response
-    CM->>CS: Store Conversation
-```
+### Case File Organization
+The display shows both user-friendly summary and complete system context:
+
+1. FORMATTED SUMMARY
+   - Critical License Information
+   - Documentation Status
+   - Payment Information
+   - Personal Information
+   - Latest Communication Update showing:
+     * User preferences (1-5)
+     * Behavioral guidance
+     * Application level
+
+2. CLAUDE'S CONTEXT
+   - Complete system instructions
+   - Raw user profile data
+   - Communication parameters including:
+     * Current preference values
+     * Latest [COMMUNICATION UPDATE]
+     * Application guidance
+
+### Message Flow Architecture
+
+The system uses [COMMUNICATION UPDATE] messages to give Claude clear instructions about preferences and their application. These messages have a consistent three-part structure:
+
+1. Raw Preferences (always preserved)
+   ```
+   Please adjust your communication style:
+   • Interaction Style: 5 (efficient)
+   • Detail Level: 5 (minimal)
+   • Rapport Level: 5 (professional)
+   ```
+
+2. Behavioral Guidance (matches preferences)
+   ```
+   Behavioral Guidance:
+   • Communicate directly and efficiently
+   • Focus on key points and actions
+   • Focus on essential information only
+   • Keep explanations brief and targeted
+   • Keep tone strictly professional
+   • Focus on facts and procedures
+   ```
+
+3. Application Guidance (varies with level)
+   ```
+   At level 0:
+   >>> CONTEXT USAGE LEVEL: MINIMAL (0-30) <<<
+   APPLY PREFERENCES WITH MINIMAL ADHERENCE:
+   • Start with standardized procedures
+   • Consider preferences as minor adjustments
+   • Keep responses protocol-focused
+
+   At level 50:
+   >>> CONTEXT USAGE LEVEL: MODERATE (31-70) <<<
+   APPLY PREFERENCES WITH MODERATE ADHERENCE:
+   • Balance procedures with preferences
+   • Incorporate preferred style while maintaining protocol
+   • Adapt responses while staying process-focused
+
+   At level 100:
+   >>> CONTEXT USAGE LEVEL: STRICT (71-100) <<<
+   APPLY PREFERENCES WITH STRICT ADHERENCE:
+   • Make preferences primary guide
+   • Fully embrace preferred style
+   • Maximize personalization while professional
+   ```
+
+This structure ensures that:
+1. User preferences are always preserved and visible
+2. Behavioral guidance consistently matches those preferences
+3. Only the application guidance changes with differentiation_level
 
 ## System Components
 
@@ -78,13 +106,8 @@ sequenceDiagram
   - Dual-citizen interface
   - Context Intelligence slider (0-100)
   - Enhanced Case File display with sections:
-    - System Instructions
-    - User Profile
-    - Communication Parameters
-    - Active Alerts
-    - Support System
-    - Behavioral Guidance
-    - System State
+    - Formatted Summary (user-friendly view)
+    - Claude's Context (complete system view)
   - Real-time chat interface
 
 ### 2. Profile Management
@@ -96,9 +119,9 @@ sequenceDiagram
         primary_language: str
     - metadata:
         communication_preferences:
-          interaction_style: int
-          detail_level: int
-          rapport_level: int
+          interaction_style: int  # 1 (methodical) to 5 (efficient)
+          detail_level: int      # 1 (maximum) to 5 (minimal)
+          rapport_level: int     # 1 (personal) to 5 (professional)
   ```
 - Drives system behavior
 - Influences all component interactions
@@ -127,13 +150,8 @@ graph LR
     end
 
     subgraph "Case File Sections"
-        F --> L[System Instructions]
-        F --> M[User Profile]
-        F --> N[Communication Parameters]
-        F --> O[Active Alerts]
-        F --> P[Support System]
-        F --> Q[Behavioral Guidance]
-        F --> R[System State]
+        F --> L[Formatted Summary]
+        F --> M[Claude's Context]
     end
 ```
 
@@ -164,81 +182,6 @@ graph TD
         F --> J[Context Markers]
     end
 ```
-
-### 6. Context Intelligence Flow
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant S as Slider
-    participant SC as StyleCalibrator
-    participant ECM as EnhancedConversationManager
-    participant CC as ConversationContext
-    participant CF as Case File Display
-    participant C as Claude API
-
-    U->>S: Adjust Slider
-    S->>SC: Update Value
-    SC->>ECM: Calibrate Controls
-    ECM->>CC: Update Context
-    ECM->>ECM: Create Calibration Message
-    Note over ECM: Stores as latest_calibration_message
-    ECM->>CF: Update Display Sections
-    ECM->>C: Next Message Flow
-    Note over C: Includes calibration + context + user message
-```
-
-```
-Slider Input (0-100) → Style Calibration → Context Update →
-Calibration Message Creation → Display Update → Message Integration → Response Adaptation
-```
-
-### 7. Message Flow Architecture
-
-```mermaid
-graph TD
-    A[System Prompt] --> E[Claude API]
-    B[Latest Calibration] --> C[Message Array]
-    D[User Message] --> C
-    F[Context Markers] --> C
-    C --> E
-    
-    subgraph "Message Components"
-        A
-        B
-        D
-        F
-    end
-    
-    subgraph "Integration"
-        C
-        E
-    end
-```
-
-Key Components:
-1. System Prompt
-   - Base context and rules
-   - Communication preferences
-   - User profile information
-
-2. Calibration Messages
-   - Role: assistant
-   - Format: [COMMUNICATION UPDATE]
-   - Contains latest calibration values
-   - Overrides previous calibrations
-
-3. Context Markers
-   - Numbered lists tracking
-   - Reference points
-   - Key details storage
-   - Conversation memory
-
-4. Message Integration
-   - Latest calibration included before user message
-   - Context markers maintained
-   - Clear update markers for LLM recognition
-   - Maintains conversation continuity
 
 ## Data Flows
 

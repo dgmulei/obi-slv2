@@ -32,9 +32,9 @@ class StyleCalibrator:
     def __init__(self, differentiation_level: Union[int, float]) -> None:
         """
         Initialize with differentiation level (0-100).
-        Level 0-30: Mostly system defaults
-        Level 31-70: Blend preferences
-        Level 71-100: Full user preferences
+        Level 0-30: Mostly standardized responses
+        Level 31-70: Begin incorporating preferences
+        Level 71-100: Strictly adhere to preferences
         """
         if not isinstance(differentiation_level, (int, float)):
             raise TypeError("differentiation_level must be a number")
@@ -58,124 +58,57 @@ class StyleCalibrator:
     def get_case_file_display(self) -> str:
         """
         Generate a formatted string of calibrated values for the Case File viewer.
+        Shows raw preferences and current application level.
         """
         if not self._last_calibrated_values:
             return "**COMMUNICATION PARAMETERS**\nNo calibration data available"
+            
+        # Determine application level description
+        level_desc = (
+            "Minimal" if self._differentiation_level <= 30 else
+            "Moderate" if self._differentiation_level <= 70 else
+            "Strict"
+        )
             
         return (
             "**COMMUNICATION PARAMETERS**\n"
             f"Interaction Style: {self._last_calibrated_values['interaction_style']}\n"
             f"Detail Level: {self._last_calibrated_values['detail_level']}\n"
             f"Rapport Level: {self._last_calibrated_values['rapport_level']}\n"
-            f"Current Level: {self._differentiation_level}"
+            f"Application Level: {level_desc} ({self._differentiation_level})"
         )
-
-    def _calculate_preference_weight(self) -> float:
-        """
-        Calculate weight for user preferences based on differentiation level.
-        0-30: Very low weight (0.0 to 0.2)
-        31-70: Medium weight (0.2 to 0.8)
-        71-100: High weight (0.8 to 1.0)
-        """
-        level = self._differentiation_level
-        
-        if level <= 30:
-            # Linear scale from 0.0 to 0.2
-            return (level / 30) * 0.2
-        elif level <= 70:
-            # Linear scale from 0.2 to 0.8
-            return 0.2 + ((level - 30) / 40) * 0.6
-        else:
-            # Linear scale from 0.8 to 1.0
-            return 0.8 + ((level - 70) / 30) * 0.2
-
-    def _generate_behavioral_instructions(self, controls: Dict[str, Any]) -> str:
-        """Generate behavioral instructions based on differentiation level and controls."""
-        level = self._differentiation_level
-        
-        # Base instructions that apply at all levels
-        instructions = [
-            "Please adjust your communication style:",
-            f"• Interaction Style: {controls['interaction_style']}",
-            f"• Detail Level: {controls['detail_level']}",
-            f"• Rapport Level: {controls['rapport_level']}"
-        ]
-        
-        # Add level-specific behavioral guidance
-        if level <= 30:
-            instructions.extend([
-                "",
-                "Context Usage:",
-                "• Maintain awareness of complete context",
-                "• Focus on protocol-based responses",
-                "• Use formal, standardized language",
-                "• Reference personal details only when directly relevant to procedures",
-                "• Prioritize clear procedural guidance"
-            ])
-        elif level <= 70:
-            instructions.extend([
-                "",
-                "Context Usage:",
-                "• Incorporate context naturally in responses",
-                "• Balance protocol with personalization",
-                "• Adapt language to user preferences",
-                "• Include relevant personal details to support understanding",
-                "• Maintain professional focus while showing awareness of user situation"
-            ])
-        else:
-            instructions.extend([
-                "",
-                "Context Usage:",
-                "• Fully utilize all relevant context",
-                "• Prioritize user's documented preferences",
-                "• Match communication style precisely",
-                "• Incorporate personal details to enhance relevance",
-                "• Maintain professional standards while maximizing personalization"
-            ])
-        
-        # Add formality and title preferences if above 50%
-        if level > 50:
-            if controls.get('title_required') and controls.get('professional_title'):
-                instructions.append(f"• Use title: {controls['professional_title']}")
-            instructions.append(f"• Maintain {controls.get('formality_level', 'formal')} tone")
-        
-        return "\n".join(instructions)
 
     def calibrate_structured_controls(
         self,
         user_preferences: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
-        Calibrate communication controls based on differentiation level.
-        Respects user preferences while maintaining system stability.
+        Get user's raw preferences and determine application strength.
+        No more value blending - preferences stay pure.
         """
         try:
-            # Calculate preference weight
-            weight = self._calculate_preference_weight()
-            logger.debug(f"Calculated preference weight: {weight}")
-            
-            # Start with system defaults
-            calibrated = self.SYSTEM_DEFAULTS.copy()
+            # Log incoming preferences
+            logger.info(f"Calibrating controls with preferences: {user_preferences}")
             
             # Get communication preferences
             comm_prefs = user_preferences.get('communication_preferences', {})
+            logger.info(f"Found communication preferences: {comm_prefs}")
             
-            # Calibrate core communication styles
-            core_values = {}
+            # Use raw preferences (no blending)
+            calibrated = {}
             for key in ['interaction_style', 'detail_level', 'rapport_level']:
-                user_value = comm_prefs.get(key, self.SYSTEM_DEFAULTS[key])
-                # Weighted average between system default and user preference
-                calibrated[key] = round(
-                    self.SYSTEM_DEFAULTS[key] * (1 - weight) + 
-                    user_value * weight,
-                    1
-                )
-                core_values[key] = calibrated[key]
+                if key not in comm_prefs:
+                    logger.warning(f"No {key} found in preferences, using default: {self.SYSTEM_DEFAULTS[key]}")
+                    calibrated[key] = self.SYSTEM_DEFAULTS[key]
+                else:
+                    logger.info(f"Using preference value for {key}: {comm_prefs[key]}")
+                    calibrated[key] = comm_prefs[key]
             
-            # Store calibrated values for Case File display
-            self._last_calibrated_values = core_values
+            # Store raw values for Case File display
+            self._last_calibrated_values = calibrated.copy()
+            logger.info(f"Final calibrated values: {calibrated}")
             
-            # Always include additional preferences but apply them based on weight
+            # Add name/demographic preferences unchanged
             name_prefs = user_preferences.get('name_preference', {})
             demographics = user_preferences.get('demographics', {})
             
@@ -185,7 +118,6 @@ class StyleCalibrator:
             calibrated['age_category'] = demographics.get('age_category', self.SYSTEM_DEFAULTS['age_category'])
             calibrated['professional_status'] = demographics.get('professional_status', self.SYSTEM_DEFAULTS['professional_status'])
             
-            logger.debug(f"Calibrated controls: {calibrated}")
             return calibrated
             
         except Exception as e:
@@ -193,25 +125,101 @@ class StyleCalibrator:
             self._last_calibrated_values = None
             return self.SYSTEM_DEFAULTS.copy()
 
-    def calibrate(
-        self, 
-        user_preference: Union[int, float]
-    ) -> float:
-        """
-        Calibrate a single value between system default and user preference.
-        Respects the user's preferred value based on differentiation level.
-        """
-        if not isinstance(user_preference, (int, float)):
-            raise TypeError("user_preference must be a number")
-        
-        # Calculate weight for user preference
-        weight = self._calculate_preference_weight()
-        
-        # Weighted average between system default and user preference
-        calibrated = self.SYSTEM_DEFAULTS['interaction_style'] * (1 - weight) + user_preference * weight
-        
-        return round(calibrated, 1)
-
     def generate_style_instructions(self, controls: Dict[str, Any]) -> str:
         """Generate style instructions based on current calibration."""
         return self._generate_behavioral_instructions(controls)
+
+    def _generate_behavioral_instructions(self, controls: Dict[str, Any]) -> str:
+        """Generate behavioral instructions based on differentiation level and controls."""
+        level = self._differentiation_level
+        
+        # Log the controls being used for instructions
+        logger.info(f"Generating instructions with controls: {controls}")
+        
+        # Determine application level description
+        level_desc = (
+            "minimal" if level <= 30 else
+            "moderate" if level <= 70 else
+            "strict"
+        )
+        
+        # Base instructions showing raw preferences
+        instructions = [
+            "Please adjust your communication style:",
+            f"• Interaction Style: {controls['interaction_style']} ({'methodical' if controls['interaction_style'] <= 2 else 'efficient' if controls['interaction_style'] >= 4 else 'balanced'})",
+            f"• Detail Level: {controls['detail_level']} ({'maximum' if controls['detail_level'] <= 2 else 'minimal' if controls['detail_level'] >= 4 else 'balanced'})",
+            f"• Rapport Level: {controls['rapport_level']} ({'personal' if controls['rapport_level'] <= 2 else 'professional' if controls['rapport_level'] >= 4 else 'balanced'})",
+            "",
+            f"Apply these preferences with {level_desc} adherence ({level:.0f}% differentiation level)."
+        ]
+        
+        # Add behavioral guidance based on raw preferences
+        instructions.append("\nBehavioral Guidance:")
+        
+        # Interaction Style
+        if controls['interaction_style'] <= 2:
+            instructions.extend([
+                "• Break down information into clear steps",
+                "• Provide structured, methodical guidance"
+            ])
+        elif controls['interaction_style'] >= 4:
+            instructions.extend([
+                "• Communicate directly and efficiently",
+                "• Focus on key points and actions"
+            ])
+        
+        # Detail Level
+        if controls['detail_level'] <= 2:
+            instructions.extend([
+                "• Include comprehensive explanations",
+                "• Provide relevant background information"
+            ])
+        elif controls['detail_level'] >= 4:
+            instructions.extend([
+                "• Focus on essential information only",
+                "• Keep explanations brief and targeted"
+            ])
+        
+        # Rapport Level
+        if controls['rapport_level'] <= 2:
+            instructions.extend([
+                "• Maintain a warm, personal approach",
+                "• Show empathy and understanding"
+            ])
+        elif controls['rapport_level'] >= 4:
+            instructions.extend([
+                "• Keep tone formal and professional",
+                "• Focus on facts and procedures"
+            ])
+        
+        # Add application guidance based on level
+        instructions.append("\nApplication Guidance:")
+        if level <= 30:
+            instructions.extend([
+                "• Default to standardized responses and procedures",
+                "• Consider preferences as minor adjustments only",
+                "• Keep responses primarily protocol-focused",
+                "• Use personal context only when directly relevant"
+            ])
+        elif level <= 70:
+            instructions.extend([
+                "• Balance standard procedures with preferences",
+                "• Incorporate preferences while maintaining protocol",
+                "• Adapt responses while staying process-focused",
+                "• Use context to enhance understanding when appropriate"
+            ])
+        else:
+            instructions.extend([
+                "• Make user preferences your primary guide",
+                "• Fully embrace the preferred communication style",
+                "• Maintain professionalism while maximizing personalization",
+                "• Actively use context to enhance relevance"
+            ])
+        
+        # Add formality and title preferences if above 50%
+        if level > 50:
+            if controls.get('title_required') and controls.get('professional_title'):
+                instructions.append(f"• Use title: {controls['professional_title']}")
+            instructions.append(f"• Maintain {controls.get('formality_level', 'formal')} tone")
+        
+        return "\n".join(instructions)

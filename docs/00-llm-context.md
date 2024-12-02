@@ -89,30 +89,50 @@ EnhancedConversationManager
     ↓
 StyleCalibrator & CommunicationController
 ↑ CRITICAL for response quality
-├── Must maintain differentiation balance
-├── Controls scaling behavior
+├── Must maintain preference integrity
+├── Controls application strength
 ├── Manages system/user separation
 └── Affects ALL communication aspects
+```
+
+#### Context Intelligence Flow
+```
+Slider (0-100) → StyleCalibrator → EnhancedConversationManager
+↑ Three-part message structure:
+├── Raw Preferences (1-5 scale)
+│   ├── Preserved at all levels
+│   ├── Interaction Style: methodical (1) to efficient (5)
+│   ├── Detail Level: maximum (1) to minimal (5)
+│   └── Rapport Level: personal (1) to professional (5)
+├── Behavioral Guidance
+│   ├── Matches preferences exactly
+│   ├── Example for efficient (5):
+│   │   ├── "Communicate directly and efficiently"
+│   │   ├── "Focus on key points and actions"
+│   │   └── "Keep explanations brief and targeted"
+└── Application Guidance
+    ├── MINIMAL (0-30): Consider preferences as minor adjustments
+    ├── MODERATE (31-70): Balance preferences with protocol
+    └── STRICT (71-100): Make preferences primary guide
 ```
 
 #### Case File Display Structure
 ```
 Case File Display
-↑ CRITICAL for context visibility
-├── System Instructions
-│   └── Raw system rules/parameters sent to Claude
-├── User Profile
-│   └── Complete YAML profile including metadata
-├── Communication Parameters
-│   └── Current numerical values and active instructions
-├── Active Alerts
-│   └── Critical information and restrictions
-├── Support System
-│   └── Family and professional network details
-├── Behavioral Guidance
-│   └── Current instructions to Claude
-└── System State
-    └── Debug information and status
+↑ TWO MAIN SECTIONS
+├── FORMATTED SUMMARY
+│   ├── Critical License Information
+│   ├── Documentation Status
+│   ├── Payment Information
+│   ├── Personal Information
+│   └── Latest Communication Update
+└── CLAUDE'S CONTEXT
+    ├── System Instructions
+    ├── User Profile
+    └── Communication Parameters
+        ├── Current Values
+        ├── Latest [COMMUNICATION UPDATE]
+        └── Application Guidance
 
 ↑ DISPLAY INTEGRITY CRITICAL
 ├── Maintains context visibility
@@ -125,7 +145,10 @@ Case File Display
 ```
 user-profiles-yaml.txt
 ↑ DRIVES ENTIRE SYSTEM BEHAVIOR
-├── Affects ALL components
+├── Communication Preferences (1-5 scale)
+│   ├── interaction_style: methodical (1) to efficient (5)
+│   ├── detail_level: maximum (1) to minimal (5)
+│   └── rapport_level: personal (1) to professional (5)
 ├── Structure must be preserved
 ├── Requires strict validation
 ├── Uses TTL caching
@@ -137,33 +160,14 @@ user-profiles-yaml.txt
     └── Calibration behavior
 ```
 
-#### Context Intelligence Flow
-```
-Slider (0-100) → StyleCalibrator → EnhancedConversationManager
-↑ Changes propagate through message system
-├── Affects active conversations through:
-    ├── Latest calibration message
-    ├── [COMMUNICATION UPDATE] markers
-    ├── Context persistence
-    └── In-conversation instructions
-├── Maintains base context via system prompt
-├── Preserves conversation markers
-└── Modifies:
-    ├── Communication style
-    ├── Detail levels
-    ├── Rapport building
-    └── Context depth
-```
-
 #### Message System Architecture
 ```
 EnhancedConversationManager
 ↑ CRITICAL MESSAGE FLOW CONTROL
-├── Manages conversation structure:
-    ├── System prompt (base context)
-    ├── Calibration messages (dynamic updates)
-    ├── Context markers (persistence)
-    └── User messages (interaction)
+├── [COMMUNICATION UPDATE] Structure:
+│   ├── Raw preferences (always preserved)
+│   ├── Behavioral guidance (matches preferences)
+│   └── Application guidance (varies with level)
 ├── Message Role Requirements:
     ├── System: Top-level parameter only
     ├── Assistant: For calibration updates
@@ -177,7 +181,7 @@ EnhancedConversationManager
     ├── Stored as latest_calibration_message
     ├── Included before user messages
     ├── Uses [COMMUNICATION UPDATE] markers
-    └── Linear scaling with thresholds
+    └── Application level controls strength
 ```
 
 #### Critical Implementation Notes
@@ -190,9 +194,9 @@ Message Flow
 ├── User message follows
 └── Response maintains style based on:
     ├── System instructions
-    ├── Latest calibration values
-    ├── Context state
-    └── [COMMUNICATION UPDATE] markers
+    ├── Raw preferences (1-5)
+    ├── Behavioral guidance
+    └── Application level (MINIMAL/MODERATE/STRICT)
 
 Context Persistence
 ↑ VALIDATION REQUIRED
@@ -204,7 +208,9 @@ Context Persistence
 
 Display Updates
 ↑ SYNCHRONIZATION CRITICAL
-├── Verify all sections present
+├── Verify both sections present
+│   ├── Formatted Summary
+│   └── Claude's Context
 ├── Update on context changes
 ├── Maintain section order
 ├── Preserve debug information
@@ -218,6 +224,7 @@ Display Updates
 Initialization
 ↑ CRITICAL SEQUENCE
 ├── Load user profile
+├── Extract preferences (1-5)
 ├── Create system prompt
 ├── Initialize calibration
 ├── Setup context tracking
@@ -226,8 +233,8 @@ Initialization
 Runtime State
 ↑ MAINTAIN CONSISTENCY
 ├── Track active sessions
-├── Monitor calibration updates
-├── Preserve context markers
+├── Preserve raw preferences
+├── Monitor application level
 ├── Maintain profile cache
 └── Handle errors gracefully
 ```
@@ -245,7 +252,7 @@ Before Changes:
 During Implementation:
 ├── Follow precise order
 ├── Maintain message structure
-├── Preserve calibration flow
+├── Preserve preferences
 ├── Track context markers
 └── Handle all error cases
 ```
@@ -256,8 +263,8 @@ During Implementation:
 ```
 Must Document:
 ├── Purpose of change
-├── Impact on message flow
-├── Effect on calibration
+├── Impact on preferences
+├── Effect on application levels
 ├── Context implications
 └── API compatibility
 ```
@@ -276,12 +283,12 @@ Must Update:
 
 Before completing ANY changes:
 1. Have you maintained message flow integrity?
-2. Are calibration updates properly handled?
+2. Are raw preferences preserved?
 3. Is the system prompt structure preserved?
 4. Are all message roles correct?
 5. Is context persistence validated?
 6. Are profile validations complete?
 7. Is documentation complete and accurate?
-8. Are all Case File sections properly updated?
+8. Are both Case File sections properly updated?
 9. Is display synchronization maintained?
 10. Are debug capabilities preserved?
