@@ -18,13 +18,31 @@ def display_chat_messages(messages: List[Message]) -> None:
 def display_user_info(user: Dict[str, Any]) -> None:
     """Display user information in a collapsible expander."""
     with st.expander("User Information", expanded=False):
-        st.write(f"Name: {user['personal']['full_name']}")
-        st.write(f"DOB: {user['personal']['dob']}")
-        st.write(f"License Number: {user['license']['current']['number']}")
-        st.write(f"Expiration: {user['license']['current']['expiration']}")
+        try:
+            # Display personal information with fallbacks
+            personal = user.get('personal', {})
+            st.write(f"Name: {personal.get('full_name', 'Not provided')}")
+            if 'dob' in personal:
+                st.write(f"DOB: {personal['dob']}")
+                
+            # Display license information with fallbacks
+            license_info = user.get('license', {})
+            license_number = license_info.get('license_number', 'Not provided')
+            expiration_date = license_info.get('expiration_date', 'Not provided')
+            
+            st.write(f"License Number: {license_number}")
+            st.write(f"Expiration: {expiration_date}")
+            
+        except Exception as e:
+            logger.error(f"Error displaying user info: {str(e)}")
+            st.error("Error displaying user information")
+
+def _format_section(title: str, content: str) -> str:
+    """Format a section with title and content."""
+    return f"### {title}\n\n```text\n{content}\n```"
 
 def get_case_file_content(context: ConversationContext, conversation_manager: ConversationManager) -> Optional[str]:
-    """Get the formatted case file content from the project folder."""
+    """Get the formatted case file content showing Claude's Tier One memory."""
     try:
         if not context.active_user_profile:
             return None
@@ -34,52 +52,38 @@ def get_case_file_content(context: ConversationContext, conversation_manager: Co
         if not enhanced_manager or not enhanced_manager.system_prompt:
             return None
             
-        # Split the system prompt into sections
-        sections = enhanced_manager.system_prompt.split('\n\n')
         formatted_sections = []
         
-        for section in sections:
-            # Skip empty sections
-            if not section.strip():
-                continue
-                
-            # Get section title and content
-            lines = section.split('\n')
-            title = lines[0].strip(':')
-            content = '\n'.join(lines[1:])
-            
-            # Update section titles with subheaders
-            if title == "SYSTEM RULES (NON-NEGOTIABLE)":
-                title = "SYSTEM RULES\nCore Service Parameters"
-            elif title == "USER CONTEXT":
-                title = "USER CONTEXT\nDerived from Static Data"
-            elif title == "COMMUNICATION PREFERENCES":
-                title = "COMMUNICATION PREFERENCES\nAI-Analyzed Patterns"
-            elif title == "USER PROFILE SUMMARY":
-                # Simply replace the all-caps header with title case
-                content = content.replace("STRUCTURED COMMUNICATION REQUIREMENTS:", "Structured Communication Requirements:")
-                title = "USER PROFILE SUMMARY\nSynthesized Understanding"
-            
-            # Format list items and regular content differently
-            formatted_lines = []
-            for line in content.split('\n'):
-                line = line.strip()
-                if line.startswith('- '):
-                    # Format list items with proper indentation and wrapping
-                    wrapped = textwrap.fill(line[2:], width=50, initial_indent='• ', subsequent_indent='  ')
-                    formatted_lines.append(wrapped)
-                else:
-                    # Format regular content with proper wrapping
-                    if line:  # Only process non-empty lines
-                        wrapped = textwrap.fill(line, width=50)
-                        formatted_lines.append(wrapped)
-            
-            # Format section with improved markdown
-            formatted_section = f"### {title}\n\n```text\n" + '\n'.join(formatted_lines) + "\n```"
-            formatted_sections.append(formatted_section)
+        # 1. System Instructions
+        system_rules = enhanced_manager.system_prompt.split('USER PROFILE')[0].strip()
+        formatted_sections.append(_format_section("SYSTEM INSTRUCTIONS", system_rules))
         
-        # Combine all sections with proper spacing
+        # 2. User Profile
+        profile_yaml = context.active_user_profile
+        formatted_sections.append(_format_section("USER PROFILE", str(profile_yaml)))
+        
+        # 3. Communication Parameters
+        comm_params = []
+        
+        # Add current numerical values
+        if enhanced_manager.current_project_folder and hasattr(enhanced_manager.current_project_folder, 'calibrated_controls'):
+            controls = enhanced_manager.current_project_folder.calibrated_controls
+            comm_params.append("Current Values:")
+            for key, value in controls.items():
+                comm_params.append(f"{key}: {value}")
+            comm_params.append("")
+        
+        # Add active instructions
+        if enhanced_manager.latest_calibration_message:
+            content = enhanced_manager.latest_calibration_message['content']
+            content = content.replace("[COMMUNICATION UPDATE] ", "")
+            comm_params.append("Active Instructions:")
+            comm_params.extend(content.split('\n'))
+        
+        formatted_sections.append(_format_section("COMMUNICATION PARAMETERS", '\n'.join(comm_params)))
+        
         return '\n\n'.join(formatted_sections)
+        
     except Exception as e:
         logger.error(f"Error getting case file content: {str(e)}")
         return None
@@ -87,25 +91,12 @@ def get_case_file_content(context: ConversationContext, conversation_manager: Co
 def process_user_message(message: str, conversation_manager: ConversationManager, context: ConversationContext, visible: bool = True) -> bool:
     """Process user message and get response."""
     try:
-        # Create and add user message first
-        user_message = Message(role="user", content=message, visible=visible)
-        context.messages.append(user_message)
-        
         # Get assistant's response
         response_content, success = conversation_manager.get_response(
             message, 
             context,
             visible=visible
         )
-        
-        if success:
-            # Create and add assistant message
-            assistant_message = Message(role="assistant", content=response_content, visible=visible)
-            context.messages.append(assistant_message)
-            
-            # For initial "Hello?" message, make it invisible after successful response
-            if message == "Hello?":
-                user_message.visible = False
         
         return success
             
@@ -128,40 +119,6 @@ def setup_case_file_css() -> None:
                 padding: 0;
             }
             
-            /* Sidebar header */
-            section[data-testid="stSidebar"] h3 {
-                margin-bottom: 1rem;
-                padding-bottom: 0.5rem;
-                border-bottom: 1px solid #dee2e6;
-            }
-            
-            /* Tab styling */
-            .stTabs {
-                background-color: white;
-                border-radius: 8px;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            }
-            
-            .stTabs [data-baseweb="tab-list"] {
-                gap: 0;
-                background-color: #f1f3f5;
-                padding: 0.5rem 0.5rem 0;
-                border-radius: 8px 8px 0 0;
-            }
-            
-            .stTabs [data-baseweb="tab"] {
-                height: 40px;
-                padding: 0 16px;
-                margin-right: 4px;
-                border-radius: 4px 4px 0 0;
-            }
-            
-            .stTabs [data-baseweb="tab-panel"] {
-                padding: 1rem;
-                max-height: calc(100vh - 200px);
-                overflow-y: auto;
-            }
-            
             /* Case file content styling */
             .case-file {
                 font-size: 0.9rem;
@@ -176,10 +133,9 @@ def setup_case_file_css() -> None:
                 margin: 1.5rem 0 1rem 0;
                 padding-bottom: 0.5rem;
                 border-bottom: 1px solid #eaecef;
-                white-space: pre-line;
             }
             
-            /* Code block styling with improved wrapping */
+            /* Code block styling */
             .case-file pre {
                 background-color: white;
                 border: 1px solid #eaecef;
@@ -194,7 +150,6 @@ def setup_case_file_css() -> None:
                 overflow-wrap: break-word !important;
                 width: 100% !important;
                 box-sizing: border-box !important;
-                display: block !important;
             }
             
             .case-file code {
@@ -222,11 +177,6 @@ def setup_case_file_css() -> None:
                 box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             }
             
-            /* Hide default Streamlit elements */
-            .stDeployButton, .viewerBadge_container__1QSob {
-                display: none !important;
-            }
-            
             /* Scrollbar styling */
             ::-webkit-scrollbar {
                 width: 6px;
@@ -245,15 +195,6 @@ def setup_case_file_css() -> None:
             
             ::-webkit-scrollbar-thumb:hover {
                 background: #a8a8a8;
-            }
-            
-            /* Additional wrapper styling */
-            .stMarkdown {
-                width: 100% !important;
-            }
-            
-            .stMarkdown > div {
-                width: 100% !important;
             }
         </style>
     """, unsafe_allow_html=True)
