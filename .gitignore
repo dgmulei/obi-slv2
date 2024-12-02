@@ -1,35 +1,22 @@
+# Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-.env
+*.pyc
+
+# Virtual Environment
 venv/
-venv311/
-.venv
-.idea/
-.vscode/
-*.swp
+env/
+
+# Sensitive Data
+credentials/
+.env
+
+# Database
+chroma_db/
+
+# Local Development
+*.log
 .DS_Store
 
-# Credentials
-credentials/
-*.json
-!package.json
-!package-lock.json
-streamlit_secrets.toml
+# IDE
+.vscode/
+.idea/
